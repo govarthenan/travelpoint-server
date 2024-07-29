@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Body, Response, status
+from fastapi.responses import JSONResponse
 
 import psycopg.rows
 from pydantic import BaseModel
+
 
 import psycopg
 from psycopg.rows import dict_row
@@ -21,7 +23,7 @@ try:
     conn: psycopg.Connection
     cur: psycopg.Cursor
 
-    conn = psycopg.connect(DSN, row_factory=dict_row) # type: ignore
+    conn = psycopg.connect(DSN, row_factory=dict_row)  # type: ignore
     cur = conn.cursor()
 except Exception as e:
     print(f"Error connecting to DB:\n{e}")
@@ -48,6 +50,10 @@ class UserRegistration(BaseModel):
     password: str
 
 
+class SimpleErrorMessage(BaseModel):
+    message: str
+
+
 # server
 app = FastAPI()
 
@@ -57,7 +63,12 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.post("/user_management/register", status_code=status.HTTP_201_CREATED)
+endpoint_errors = {
+    500: {"model": SimpleErrorMessage, "description": "Database Error"},
+}
+
+
+@app.post("/user_management/register", status_code=status.HTTP_201_CREATED, responses=endpoint_errors)  # type: ignore
 async def register_user(payload: UserRegistration = Body(...), response: Response = Response()):
     hashed_password = hash_password(payload.password)
 
@@ -69,8 +80,9 @@ async def register_user(payload: UserRegistration = Body(...), response: Respons
             query, (payload.first_name, payload.last_name, payload.phone_number, payload.location, hashed_password)
         )
         conn.commit()
-
-        return {"message": "User registered!"}
+        return JSONResponse(content={"message": "User registered!"})
     except Exception as e:
-        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"detail": str(e)}
+        print(f"ERROR - DB:\n{e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": endpoint_errors[500]["description"]}
+        )
