@@ -3,3 +3,4 @@ pydantic
 passlib
 bcrypt<=4.1.0
 psycopg[binary,pool]
+pillow
