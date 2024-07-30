@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import psycopg
 from psycopg.rows import dict_row
 
-from app.utils import hash_password
+from app.utils import hash_password, verify_password
 
 # database configuration
 db_name = "travelpoint"
@@ -52,6 +52,11 @@ class UserRegistration(BaseModel):
     password: str
 
 
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
 class SimpleErrorMessage(BaseModel):
     message: str
 
@@ -83,6 +88,44 @@ async def register_user(payload: UserRegistration = Body(...), response: Respons
         )
         conn.commit()
         return JSONResponse(content={"message": "User registered!"})
+    except Exception as e:
+        print(f"ERROR - DB:\n{e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": endpoint_errors[500]["description"]}
+        )
+
+
+endpoint_status_codes = {
+    200: {"description": "Login successful"},
+    500: {"description": "Database Error"},
+    404: {"description": "User not found"},
+    401: {"description": "Invalid password"},
+}
+
+
+@app.get("/auth/login", responses=endpoint_status_codes)  # type: ignore
+async def login_user(payload: UserLogin = Body(...)):
+    email = payload.email
+    password = payload.password
+
+    query = b"SELECT * FROM user_info WHERE email = %s"
+    try:
+        cur.execute(query, (email,))
+        result = cur.fetchone()
+        if result:
+            if verify_password(password, result["password"]):  # type: ignore
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK, content={"message": endpoint_status_codes[200]["description"]}
+                )
+            else:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"message": endpoint_status_codes[401]["description"]},
+                )
+        else:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND, content={"message": endpoint_status_codes[404]["description"]}
+            )
     except Exception as e:
         print(f"ERROR - DB:\n{e}")
         return JSONResponse(
