@@ -1,14 +1,12 @@
 from fastapi import FastAPI, Body, Response, status
 from fastapi.responses import JSONResponse
 
-import psycopg.rows
 from pydantic import BaseModel
-
 
 import psycopg
 from psycopg.rows import dict_row
 
-from utils import hash_password
+from app.utils import hash_password
 
 # database configuration
 db_name = "travelpoint"
