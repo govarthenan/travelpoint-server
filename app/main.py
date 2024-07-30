@@ -227,3 +227,37 @@ async def like_post(post_id: int):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": endpoint_errors[500]["description"]}
         )
+
+
+endpoint_status_codes = {
+    500: {"description": "Database Error"},
+}
+
+
+@app.get("/posts/get_all", responses=endpoint_errors)  # type: ignore
+async def get_all_posts():
+    query = b"SELECT * FROM posts"
+    try:
+        cur.execute(query)
+        result = cur.fetchall()
+
+        processed_result = []
+        for row in result:
+            processed_row = {
+                "id": row["id"],  # type: ignore
+                "poster": row["poster"],  # type: ignore
+                "caption": row["caption"],  # type: ignore
+                "image": row["image"].decode("utf-8"),  # Encode binary to base64 string # type: ignore
+                "timestamp": int(
+                    row["timestamp"].timestamp()  # type: ignore
+                ),  # Convert datetime to Unix timestamp string
+                "likes": row["likes"],  # type: ignore
+            }
+            processed_result.append(processed_row)
+
+        return JSONResponse(content={"count": len(processed_result), "posts": processed_result})
+    except Exception as e:
+        print(f"ERROR - DB:\n{e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": endpoint_errors[500]["description"]}
+        )
