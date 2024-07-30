@@ -2,4 +2,4 @@ fastapi
 pydantic
 passlib
 bcrypt==4.1.0
-psycopg
+psycopg[binary,pool]
