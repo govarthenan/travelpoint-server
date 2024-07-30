@@ -43,9 +43,11 @@ except Exception as e:
 
 
 class UserRegistration(BaseModel):
+    email: str
     first_name: str
     last_name: str
     phone_number: int
+    nic_passport: str
     location: str
     password: str
 
@@ -72,12 +74,12 @@ endpoint_errors = {
 async def register_user(payload: UserRegistration = Body(...), response: Response = Response()):
     hashed_password = hash_password(payload.password)
 
-    query = b"""INSERT INTO user_info (first_name, last_name, phone_number, location, password) \
-            VALUES (%s, %s, %s, %s, %s)"""
+    query = b"""INSERT INTO user_info (first_name, last_name, phone_number, location, password, nic_passport, email) \
+            VALUES (%s, %s, %s, %s, %s, %s, %s)"""
 
     try:
         cur.execute(
-            query, (payload.first_name, payload.last_name, payload.phone_number, payload.location, hashed_password)
+            query, (payload.first_name, payload.last_name, payload.phone_number, payload.location, hashed_password, payload.nic_passport, payload.email)
         )
         conn.commit()
         return JSONResponse(content={"message": "User registered!"})
