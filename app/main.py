@@ -84,7 +84,16 @@ async def register_user(payload: UserRegistration = Body(...), response: Respons
 
     try:
         cur.execute(
-            query, (payload.first_name, payload.last_name, payload.phone_number, payload.location, hashed_password, payload.nic_passport, payload.email)
+            query,
+            (
+                payload.first_name,
+                payload.last_name,
+                payload.phone_number,
+                payload.location,
+                hashed_password,
+                payload.nic_passport,
+                payload.email,
+            ),
         )
         conn.commit()
         return JSONResponse(content={"message": "User registered!"})
