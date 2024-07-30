@@ -12,7 +12,9 @@ from app.utils import hash_password
 db_name = "travelpoint"
 user = "postgres"
 root_password = "root"
-DSN = f"dbname={db_name} user={user} password={root_password}"
+host = "127.0.0.1"
+port = "5432"
+DSN = f"dbname={db_name} user={user} password={root_password} host={host} port={port}"
 
 #  try to connect to database
 conn: psycopg.connection.Connection  # type hint
