@@ -8,6 +8,10 @@ from psycopg.rows import dict_row
 
 from app.utils import hash_password, verify_password
 
+import base64
+from PIL import Image
+import io
+
 # database configuration
 db_name = "travelpoint"
 user = "postgres"
@@ -55,6 +59,12 @@ class UserRegistration(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+
+class PostCreate(BaseModel):
+    poster: int
+    caption: str
+    image: str  # Base64 encoded image
 
 
 class SimpleErrorMessage(BaseModel):
@@ -140,4 +150,47 @@ async def login_user(payload: UserLogin = Body(...)):
         print(f"ERROR - DB:\n{e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": endpoint_errors[500]["description"]}
+        )
+
+
+endpoint_status_codes = {
+    201: {"description": "Post created"},
+    500: {"description": "Database Error"},
+}
+
+
+@app.post("/posts/create", responses=endpoint_status_codes, status_code=status.HTTP_201_CREATED)  # type: ignore
+async def create_post(payload: PostCreate = Body(...)):
+    poster = payload.poster
+    caption = payload.caption
+    image = payload.image
+
+    # Open the image from the Base64 encoded string
+    image_data = io.BytesIO(base64.b64decode(image))
+    image = Image.open(image_data)
+
+    # Resize the image
+    resized_image = image.resize((image.width // 3, image.height // 3))
+
+    # Convert the resized image back to Base64 encoded string
+    output_buffer = io.BytesIO()
+    resized_image.save(output_buffer, format="JPEG")
+    resized_image_data = base64.b64encode(output_buffer.getvalue()).decode("utf-8")
+
+    query = b"""INSERT INTO posts (poster, caption, image) VALUES (%s, %s, %s) RETURNING id"""
+
+    try:
+        # Use the resized image in the query
+        cur.execute(query, (poster, caption, resized_image_data))
+        post_id = cur.fetchone()["id"]  # type: ignore
+        conn.commit()
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={"message": endpoint_status_codes[201]["description"], "post_id": post_id},
+        )
+    except Exception as e:
+        print(f"ERROR - DB:\n{e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": endpoint_status_codes[500]["description"]},
         )
