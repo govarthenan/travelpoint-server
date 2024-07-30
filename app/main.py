@@ -194,3 +194,36 @@ async def create_post(payload: PostCreate = Body(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": endpoint_status_codes[500]["description"]},
         )
+
+
+endpoint_status_codes = {
+    200: {"description": "Post liked"},
+    500: {"description": "Database Error"},
+    404: {"description": "Post not found"},
+}
+
+
+@app.put("/posts/like/{post_id}", responses=endpoint_status_codes)  # type: ignore
+async def like_post(post_id: int):
+    query = b"SELECT * FROM posts WHERE id = %s"
+    try:
+        cur.execute(query, (post_id,))
+        result = cur.fetchone()
+        if result:
+            likes = result["likes"] + 1  # type: ignore
+            query = b"UPDATE posts SET likes = %s WHERE id = %s"
+            cur.execute(query, (likes, post_id))
+            conn.commit()
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={"message": endpoint_status_codes[200]["description"], "likes": likes},
+            )
+        else:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND, content={"message": endpoint_status_codes[404]["description"]}
+            )
+    except Exception as e:
+        print(f"ERROR - DB:\n{e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": endpoint_errors[500]["description"]}
+        )
