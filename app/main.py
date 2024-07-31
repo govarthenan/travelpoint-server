@@ -135,12 +135,12 @@ async def login_user(payload: UserLogin = Body(...)):
             if verify_password(password, result["password"]):  # type: ignore
                 return JSONResponse(
                     status_code=status.HTTP_200_OK,
-                    content={"message": endpoint_status_codes[200]["description"], "user": result},
+                    content={"user": result},
                 )
             else:
                 return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    content={"message": endpoint_status_codes[401]["description"]},
+                    content={"message": "Username or password wrong"},
                 )
         else:
             return JSONResponse(
